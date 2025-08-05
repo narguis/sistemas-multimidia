@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import CenaJogo from './scenes/CenaJogo.js';
+import PauseMenu from './scenes/PauseMenu.js';
 
 // Criando a cena do menu principal
 class MainMenu extends Phaser.Scene {
@@ -369,7 +370,7 @@ const config = {
       debug: false
     }
   },
-  scene: [MainMenu, GameScene, CenaJogo],
+  scene: [MainMenu, GameScene, CenaJogo, PauseMenu],
   scale: {
     mode: Phaser.Scale.RESIZE,
     parent: 'phaser-example',

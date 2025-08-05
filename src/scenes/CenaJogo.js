@@ -41,14 +41,79 @@ export default class CenaJogo extends Phaser.Scene {
     });
   }
 
+  // ========= Helpers para barras de vida =========
+  createHeroHealthBar() {
+    this.heroBar = this.add.graphics();
+    this.heroBar.setDepth(10);
+    this.updateHeroHealthBar();
+  }
+
+  updateHeroHealthBar() {
+    const barWidth = 50;
+    const barHeight = 6;
+    const x = this.personagem.x - barWidth / 2;
+    const y = this.personagem.y - 40;
+
+    const pct = Phaser.Math.Clamp(this.personagem.health / 100, 0, 1);
+
+    this.heroBar.clear();
+    // fundo
+    this.heroBar.fillStyle(0x000000, 0.7);
+    this.heroBar.fillRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
+    // preenchimento
+    this.heroBar.fillStyle(0x00ff00, 1);
+    this.heroBar.fillRect(x, y, barWidth * pct, barHeight);
+  }
+
+  createGolemHealthBar() {
+    const screenWidth = this.scale.width;
+    this.golemBarBg = this.add.rectangle(screenWidth / 2, 20, screenWidth * 0.6, 16, 0x000000, 0.7).setOrigin(0.5, 0.5).setDepth(10);
+    this.golemBarFill = this.add.rectangle(this.golemBarBg.x - this.golemBarBg.width / 2, 20, this.golemBarBg.width, 12, 0xff0000).setOrigin(0, 0.5).setDepth(10);
+    this.updateGolemHealthBar();
+  }
+
+  updateGolemHealthBar() {
+    const pct = Phaser.Math.Clamp(this.golem.health / 200, 0, 1);
+    this.golemBarFill.width = this.golemBarBg.width * pct;
+  }
+
+  // ========= Pausa =========
+  setupPauseControls() {
+    this.input.keyboard.on('keydown-ESC', () => {
+      this.pauseGame();
+    });
+    this.input.keyboard.on('keydown-P', () => {
+      this.pauseGame();
+    });
+  }
+
+  pauseGame() {
+    if (this.scene.isPaused()) return;
+    this.scene.pause();
+    this.scene.launch('PauseMenu');
+  }
+
   create() {
     const mapa = this.make.tilemap({ key: 'mapa' });
     const tiles = mapa.addTilesetImage('builder_c1', 'tileset');
     mapa.createLayer('toplayer', tiles);
 
+    // Ajuste de câmera para ocupar toda a tela
+    const worldWidth = mapa.widthInPixels;
+    const worldHeight = mapa.heightInPixels;
+    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+
+    const zoomX = this.scale.width / worldWidth;
+    const zoomY = this.scale.height / worldHeight;
+    const zoom = Math.min(zoomX, zoomY);
+    this.cameras.main.setZoom(zoom);
+
     // Criação do personagem e do inimigo
     this.personagem = new Personagem(this, 520, 260);
     this.golem = new Golem(this, 220, 260, this.personagem);
+
+    // Camera segue o personagem
+    this.cameras.main.startFollow(this.personagem, true, 0.08, 0.08);
 
     // Controle de tempo para não contar dano múltiplas vezes por golpe
     this.lastPlayerHitTime = 0;
@@ -64,6 +129,13 @@ export default class CenaJogo extends Phaser.Scene {
 
     // Controles do jogador
     this.cursors = this.input.keyboard.createCursorKeys();
+
+    // Barras de vida
+    this.createHeroHealthBar();
+    this.createGolemHealthBar();
+
+    // Pausa
+    this.setupPauseControls();
   }
 
   handleOverlap(personagem, golem) {
@@ -85,5 +157,45 @@ export default class CenaJogo extends Phaser.Scene {
   update() {
     this.personagem.atualizar(this.cursors);
     this.golem.atualizar(this.personagem);
+
+    // Atualizar barras de vida e posição
+    this.updateHeroHealthBar();
+    this.updateGolemHealthBar();
+
+    // Verificar morte
+    if (!this.heroDead && this.personagem.health <= 0) {
+      this.heroDead = true;
+      this.gameOver(false);
+    }
+
+    if (!this.golemDead && this.golem.health <= 0) {
+      this.golemDead = true;
+      this.gameOver(true);
+    }
+  }
+
+  gameOver(playerWon) {
+    this.scene.pause();
+    const msg = playerWon ? 'Vitória!' : 'Game Over';
+    const overlay = this.add.rectangle(this.scale.width / 2, this.scale.height / 2, this.scale.width, this.scale.height, 0x000000, 0.7).setScrollFactor(0).setDepth(20);
+    const txt = this.add.text(this.scale.width / 2, this.scale.height / 2, msg, {
+      fontSize: '48px',
+      fontFamily: 'Georgia, serif',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(20);
+
+    // Botão voltar ao menu principal
+    const btnBg = this.add.rectangle(this.scale.width / 2, this.scale.height / 2 + 80, 220, 60, 0x4a0000).setStrokeStyle(2, 0x800000).setScrollFactor(0).setDepth(20).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      this.scene.stop('PauseMenu');
+      this.scene.stop();
+      this.scene.start('mainMenu');
+    });
+    this.add.text(btnBg.x, btnBg.y, 'Menu Principal', {
+      fontSize: '24px',
+      fontFamily: 'Georgia, serif',
+      color: '#ffd700',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(20);
   }
 } 
