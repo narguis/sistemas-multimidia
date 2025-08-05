@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import CenaJogo from './scenes/CenaJogo.js';
 
 // Criando a cena do menu principal
 class MainMenu extends Phaser.Scene {
@@ -324,6 +325,21 @@ class GameScene extends Phaser.Scene {
       fontFamily: 'Georgia, serif',
       color: '#ffd700',
     }).setOrigin(0.5);
+
+    // Botão para iniciar a fase real de dungeon
+    const dungeonButtonBg = this.add.rectangle(width / 2, height * 0.6, width * 0.3, height * 0.08, 0x004a00)
+      .setStrokeStyle(2, 0x008000)
+      .setInteractive({ useHandCursor: true })
+      .setOrigin(0.5)
+      .on('pointerdown', () => {
+        this.scene.start('CenaJogo');
+      });
+
+    this.add.text(width / 2, height * 0.6, 'Fase de Dungeon', {
+      fontSize: Math.max(20, Math.floor(width / 35)) + 'px',
+      fontFamily: 'Georgia, serif',
+      color: '#ffd700',
+    }).setOrigin(0.5);
   }
 
   update() {
@@ -353,7 +369,7 @@ const config = {
       debug: false
     }
   },
-  scene: [MainMenu, GameScene],
+  scene: [MainMenu, GameScene, CenaJogo],
   scale: {
     mode: Phaser.Scale.RESIZE,
     parent: 'phaser-example',
