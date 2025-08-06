@@ -67,8 +67,8 @@ export default class CenaJogo extends Phaser.Scene {
 
   createGolemHealthBar() {
     const screenWidth = this.scale.width;
-    this.golemBarBg = this.add.rectangle(screenWidth / 2, 20, screenWidth * 0.6, 16, 0x000000, 0.7).setOrigin(0.5, 0.5).setDepth(10);
-    this.golemBarFill = this.add.rectangle(this.golemBarBg.x - this.golemBarBg.width / 2, 20, this.golemBarBg.width, 12, 0xff0000).setOrigin(0, 0.5).setDepth(10);
+    this.golemBarBg = this.add.rectangle(screenWidth / 2, 20, screenWidth * 0.6, 16, 0x000000, 0.7).setOrigin(0.5, 0.5).setDepth(10).setScrollFactor(0);
+    this.golemBarFill = this.add.rectangle(this.golemBarBg.x - this.golemBarBg.width / 2, 20, this.golemBarBg.width, 12, 0xff0000).setOrigin(0, 0.5).setDepth(10).setScrollFactor(0);
     this.updateGolemHealthBar();
   }
 
@@ -96,21 +96,29 @@ export default class CenaJogo extends Phaser.Scene {
   create() {
     const mapa = this.make.tilemap({ key: 'mapa' });
     const tiles = mapa.addTilesetImage('builder_c1', 'tileset');
-    mapa.createLayer('toplayer', tiles);
+    const dungeonLayer = mapa.createLayer('toplayer', tiles);
 
-    // Ajuste de câmera para ocupar toda a tela
+    // Ativar colisão apenas em tiles que têm a propriedade "collides" no Tiled
+    dungeonLayer.setCollisionByProperty({ collides: true });
+
+    // ========= Ajuste de câmera para full-screen ========
     const worldWidth = mapa.widthInPixels;
     const worldHeight = mapa.heightInPixels;
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
 
+    // usamos o MAIOR zoom para garantir preenchimento horizontal
     const zoomX = this.scale.width / worldWidth;
     const zoomY = this.scale.height / worldHeight;
-    const zoom = Math.min(zoomX, zoomY);
+    const zoom = Math.max(zoomX, zoomY);
     this.cameras.main.setZoom(zoom);
 
     // Criação do personagem e do inimigo
     this.personagem = new Personagem(this, 520, 260);
     this.golem = new Golem(this, 220, 260, this.personagem);
+
+    // Colisões com paredes
+    this.physics.add.collider(this.personagem, dungeonLayer);
+    this.physics.add.collider(this.golem, dungeonLayer);
 
     // Camera segue o personagem
     this.cameras.main.startFollow(this.personagem, true, 0.08, 0.08);
@@ -175,7 +183,8 @@ export default class CenaJogo extends Phaser.Scene {
   }
 
   gameOver(playerWon) {
-    this.scene.pause();
+    // Pausamos apenas a física/atualizações automáticas, mantendo o sistema de input ativo
+    this.physics.pause();
     const msg = playerWon ? 'Vitória!' : 'Game Over';
     const overlay = this.add.rectangle(this.scale.width / 2, this.scale.height / 2, this.scale.width, this.scale.height, 0x000000, 0.7).setScrollFactor(0).setDepth(20);
     const txt = this.add.text(this.scale.width / 2, this.scale.height / 2, msg, {
