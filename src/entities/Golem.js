@@ -107,7 +107,11 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
         }
 
         // Movimento
-        if (distancia < 250) {
+        // alcance de visão = diagonal da tela em unidades do mundo
+        const cam = this.scene.cameras.main;
+        const alcanceVisao = Math.hypot(cam.width, cam.height) / cam.zoom;
+
+        if (distancia < alcanceVisao) {
             this.scene.physics.moveToObject(this, player, this.speed);
             this.play('golem_walk', true);
         } else {
@@ -241,11 +245,9 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
         rock.body.setCircle(8);
         rock.body.allowGravity = false;
 
-        // Calcula vetor velocidade em direção ao alvo
-        const angulo = Phaser.Math.Angle.Between(this.x, this.y, alvo.x, alvo.y);
+        // Aplica velocidade instantânea em direção ao alvo
         const speed = this.enraged ? 230 : 180;
-        const v = this.scene.physics.velocityFromRotation(angulo, speed);
-        rock.setVelocity(v.x, v.y);
+        this.scene.physics.moveToObject(rock, alvo, speed);
 
         // Adiciona ao grupo
         this.projectiles.add(rock);
