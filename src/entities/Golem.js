@@ -4,7 +4,7 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
 
         // Propriedades do Golem
         this.health = 200;
-        this.speed = 40;
+        this.speed = 60;
         this.estado = 'idle';
         this.ultimoAtaque = 0;
         this.alvo = alvo; // Referência ao personagem

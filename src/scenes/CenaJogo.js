@@ -39,6 +39,8 @@ export default class CenaJogo extends Phaser.Scene {
       frameWidth: 90,
       frameHeight: 64,
     });
+    // Sprite da espada
+    this.load.image('sword', 'assets/sword.png');
   }
 
   // ========= Helpers para barras de vida =========
@@ -107,6 +109,7 @@ export default class CenaJogo extends Phaser.Scene {
     const mapa = this.make.tilemap({ key: 'mapa' });
     const tiles = mapa.addTilesetImage('builder_c1', 'tileset');
     const dungeonLayer = mapa.createLayer('toplayer', tiles);
+    this.dungeonLayer = dungeonLayer;
 
     // Ativar colisão apenas em tiles que têm a propriedade "collides" no Tiled
     dungeonLayer.setCollisionByProperty({ collides: true });
@@ -160,12 +163,64 @@ export default class CenaJogo extends Phaser.Scene {
     // Controles do jogador
     this.cursors = this.input.keyboard.createCursorKeys();
 
+    // ===== Sistema de espadas =====
+    this.swordGroup = this.physics.add.group();
+    this.physics.add.overlap(this.personagem, this.swordGroup, this.handleSwordPickup, null, this);
+    this.spawnSword();
+
     // Barras de vida
     this.createHeroHealthBar();
     this.createGolemHealthBar();
 
     // Pausa
     this.setupPauseControls();
+  }
+
+  // ===== Espada: geração e coleta =====
+  swordTextureKey() {
+    return 'sword';
+  }
+
+  spawnSword() {
+    if (this.personagem.hasWeapon) return; // não precisa se já tem
+    if (this.swordGroup.countActive(true) > 0) return; // já existe uma espada
+
+    // Dimensões totais do mapa em pixels
+    const mapW = this.dungeonLayer.tilemap.widthInPixels;
+    const mapH = this.dungeonLayer.tilemap.heightInPixels;
+
+    let x, y, tile, dist;
+    for (let i = 0; i < 60; i++) { // tenta várias vezes achar posição válida
+      x = Phaser.Math.Between(32, mapW - 32);
+      y = Phaser.Math.Between(32, mapH - 32);
+      tile = this.dungeonLayer.getTileAtWorldXY(x, y, true);
+      dist = Phaser.Math.Distance.Between(x, y, this.personagem.x, this.personagem.y);
+      if (!tile?.properties?.collides && dist > 60) break;
+    }
+
+    // Fallback se por algum motivo não achou posição válida
+    if (tile?.properties?.collides) {
+      x = this.personagem.x + 60;
+      y = this.personagem.y;
+    }
+
+    const sword = this.physics.add.image(x, y, this.swordTextureKey());
+    sword.setDepth(6); // acima do piso e personagem
+    // Escala para tamanho adequado do personagem (~50%)
+    sword.setScale(0.02);
+    sword.body.setAllowGravity(false);
+    sword.setImmovable(true);
+    sword.setData('isSword', true);
+    this.swordGroup.add(sword);
+  }
+
+  handleSwordPickup(player, sword) {
+    sword.destroy();
+    player.hasWeapon = true;
+  }
+
+  weaponConsumed() {
+    this.spawnSword();
   }
 
   handleOverlap(personagem, golem) {

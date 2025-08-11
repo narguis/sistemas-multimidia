@@ -22,6 +22,9 @@ export default class Personagem extends Phaser.Physics.Arcade.Sprite {
     this.health = 100;          // Pontos de vida do jogador
     this.invencivel = false;    // Breve invencibilidade após levar dano
 
+    // Sistema de arma
+    this.hasWeapon = false;
+
     this.scene = scene;
 
     this.scene.anims.create({
@@ -72,12 +75,16 @@ export default class Personagem extends Phaser.Physics.Arcade.Sprite {
 
     if (this.estado === 'atacando') return;
 
-    if (Phaser.Input.Keyboard.JustDown(cursors.space)) {
+    if (Phaser.Input.Keyboard.JustDown(cursors.space) && this.hasWeapon) {
         this.estado = 'atacando';
-      this.play('atacar', true).once('animationcomplete', () => {
-                this.estado = 'idle';
-            });
-      return;
+        this.play('atacar', true).once('animationcomplete', () => {
+            this.estado = 'idle';
+            this.hasWeapon = false; // espada quebra
+            if (this.scene?.weaponConsumed) {
+                this.scene.weaponConsumed();
+            }
+        });
+        return;
     }
 
     if (cursors.left.isDown) {
