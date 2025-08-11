@@ -127,7 +127,7 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
 
         let empurraoFeito = false;
 
-        this.on('animationupdate', (anim, frame) => {
+        const onAnimUpdate = (anim, frame) => {
             if (anim.key === 'golem_attack' && frame.index === 8 && !empurraoFeito) {
                 empurraoFeito = true;
 
@@ -154,11 +154,13 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
                     });
                 }
             }
-        });
+        };
+
+        this.on('animationupdate', onAnimUpdate);
 
         this.once('animationcomplete', () => {
             this.estado = 'idle';
-            this.off('animationupdate'); // remove o listener
+            this.off('animationupdate', onAnimUpdate); // remove somente este listener
         });
     }
 
@@ -216,7 +218,8 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
         // Calcula vetor velocidade em direção ao alvo
         const angulo = Phaser.Math.Angle.Between(this.x, this.y, alvo.x, alvo.y);
         const speed = this.enraged ? 230 : 180;
-        this.scene.physics.velocityFromRotation(angulo, speed, rock.body.velocity);
+        const v = this.scene.physics.velocityFromRotation(angulo, speed);
+        rock.setVelocity(v.x, v.y);
 
         // Adiciona ao grupo
         this.projectiles.add(rock);

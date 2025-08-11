@@ -74,7 +74,7 @@ export default class CenaJogo extends Phaser.Scene {
 
   updateGolemHealthBar() {
     const pct = Phaser.Math.Clamp(this.golem.health / 200, 0, 1);
-    this.golemBarFill.width = this.golemBarBg.width * pct;
+    this.golemBarFill.scaleX = pct;
   }
 
   // ========= Pausa =========
