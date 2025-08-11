@@ -66,15 +66,25 @@ export default class CenaJogo extends Phaser.Scene {
   }
 
   createGolemHealthBar() {
-    const screenWidth = this.scale.width;
-    this.golemBarBg = this.add.rectangle(screenWidth / 2, 20, screenWidth * 0.6, 16, 0x000000, 0.7).setOrigin(0.5, 0.5).setDepth(1000).setScrollFactor(0);
-    this.golemBarFill = this.add.rectangle(this.golemBarBg.x - this.golemBarBg.width / 2, 20, this.golemBarBg.width, 12, 0xff0000).setOrigin(0, 0.5).setDepth(1001).setScrollFactor(0);
+    this.golemBar = this.add.graphics();
+    this.golemBar.setDepth(10);
     this.updateGolemHealthBar();
   }
 
   updateGolemHealthBar() {
+    const barWidth = 60;
+    const barHeight = 6;
+    const x = this.golem.x - barWidth / 2;
+    const y = this.golem.y - 40;
     const pct = Phaser.Math.Clamp(this.golem.health / 200, 0, 1);
-    this.golemBarFill.scaleX = pct;
+
+    this.golemBar.clear();
+    // fundo
+    this.golemBar.fillStyle(0x000000, 0.7);
+    this.golemBar.fillRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
+    // preenchimento
+    this.golemBar.fillStyle(0xff0000, 1);
+    this.golemBar.fillRect(x, y, barWidth * pct, barHeight);
   }
 
   // ========= Pausa =========
@@ -181,18 +191,6 @@ export default class CenaJogo extends Phaser.Scene {
     // Atualizar barras de vida e posição
     this.updateHeroHealthBar();
     this.updateGolemHealthBar();
-
-    // Reposiciona barra do golem fixa no topo central
-    const cam = this.cameras.main;
-    const camZoom = cam.zoom;
-    const centerX = cam.scrollX + (this.scale.width * 0.5) / camZoom;
-    const topY = cam.scrollY + 20 / camZoom;
-
-    this.golemBarBg.setPosition(centerX, topY);
-    this.golemBarFill.setPosition(centerX - this.golemBarBg.width * 0.5, topY);
-    // Mantém barra em tamanho real na tela
-    this.golemBarBg.setScale(1 / camZoom);
-    this.golemBarFill.setScale(1 / camZoom);
 
     // Verificar morte
     if (!this.heroDead && this.personagem.health <= 0) {
