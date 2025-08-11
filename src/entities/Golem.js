@@ -173,6 +173,9 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
     levarDano(dano = 20) {
         if (this.estado === 'morto') return;
 
+        // Não interrompe se já está atacando: apenas reduz vida
+        const estavaAtacando = this.estado === 'atacando';
+
         this.health -= dano;
 
         if (this.health <= 0) {
@@ -180,11 +183,34 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
             return;
         }
 
+        if (estavaAtacando) {
+            // Feedback visual simples sem mudar estado/anim
+            this.setTint(0xff0000);
+            this.scene.time.delayedCall(150, () => this.clearTint());
+            return; // mantém ataque atual
+        }
+
+        // Se estava atacando, cancela callbacks para evitar estados travados
+        if (this.currentAttackUpdate) {
+            this.off('animationupdate', this.currentAttackUpdate);
+            this.currentAttackUpdate = null;
+        }
+        if (this.currentAttackComplete) {
+            this.off('animationcomplete-golem_attack', this.currentAttackComplete);
+            this.currentAttackComplete = null;
+        }
+
         // Tocamos animação de machucado
         this.estado = 'machucado';
         this.setVelocity(0);
         this.play('golem_hurt', true).once('animationcomplete', () => {
             this.estado = 'idle';
+        });
+        // Fallback
+        this.scene.time.delayedCall(400, () => {
+            if (this.estado === 'machucado') {
+                this.estado = 'idle';
+            }
         });
     }
 
