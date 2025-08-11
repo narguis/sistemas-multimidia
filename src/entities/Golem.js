@@ -9,6 +9,21 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
         this.ultimoAtaque = 0;
         this.alvo = alvo; // Referência ao personagem
 
+        // -- Novas propriedades para ataques variáveis --
+        this.projectileCooldown = 2000; // ms
+        this.lastProjectileTime = 0;
+        this.projectiles = scene.physics.add.group();
+
+        // Flag de fase 2 (enfurecido)
+        this.enraged = false;
+
+        // ===== Fase Enfurecida ao criar (caso saúde já baixa) =====
+        if (this.health <= 100) {
+            this.enraged = true;
+            this.speed = 60;
+            this.projectileCooldown = 1200;
+        }
+
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
@@ -64,17 +79,35 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
     }
 
     atualizar(player) {
-        if (this.estado === 'morto' || this.estado === 'atacando') return;
+        if (this.estado === 'morto' || this.estado === 'atacando') {
+            // Quando atacando corpo a corpo ou morto não faz IA adicional
+            return;
+        }
 
         const distancia = Phaser.Math.Distance.Between(this.x, this.y, player.x, player.y);
         const agora = this.scene.time.now;
-        const podeAtacar = (agora - this.ultimoAtaque > 1000);
+        const podeAtaqueCorpo = (agora - this.ultimoAtaque > 1000);
+        const podeProjetil = (agora - this.lastProjectileTime > this.projectileCooldown);
 
-        if (distancia < 40 && podeAtacar) {
+        // Verifica se deve entrar em modo enraivecido
+        if (!this.enraged && this.health <= 100) {
+            this.enraged = true;
+            this.speed = 60;
+            this.projectileCooldown = 1200;
+        }
+
+        // Mecânica de escolha de ataque
+        if (distancia < 40 && podeAtaqueCorpo) {
             this.ultimoAtaque = agora;
             this.setVelocity(0);
-            this.atacar();
-        } else if (distancia < 200) {
+            this.ataqueCorpo();
+        } else if (distancia < 180 && podeProjetil) {
+            this.lastProjectileTime = agora;
+            this.shootProjectile(player);
+        }
+
+        // Movimento
+        if (distancia < 250) {
             this.scene.physics.moveToObject(this, player, this.speed);
             this.play('golem_walk', true);
         } else {
@@ -83,52 +116,57 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
-    atacar() {
-  if (this.estado === 'atacando') return;
+    // ===== Ataque corpo a corpo original =====
+    ataqueCorpo() {
+        if (this.estado === 'atacando') return;
 
-  this.estado = 'atacando';
-  this.setVelocity(0);
+        this.estado = 'atacando';
+        this.setVelocity(0);
 
-  this.play('golem_attack', true);
+        this.play('golem_attack', true);
 
-  let empurraoFeito = false;
+        let empurraoFeito = false;
 
-  this.on('animationupdate', (anim, frame) => {
-    if (anim.key === 'golem_attack' && frame.index === 8 && !empurraoFeito) {
-      empurraoFeito = true;
+        this.on('animationupdate', (anim, frame) => {
+            if (anim.key === 'golem_attack' && frame.index === 8 && !empurraoFeito) {
+                empurraoFeito = true;
 
-      // 💥 EMPURRÃO no frame 6
-      if (this.alvo && this.alvo.body) {
-        const angulo = Phaser.Math.Angle.Between(this.x, this.y, this.alvo.x, this.alvo.y);
-        const forca = 150;
+                // 💥 EMPURRÃO no frame 6
+                if (this.alvo && this.alvo.body) {
+                    const angulo = Phaser.Math.Angle.Between(this.x, this.y, this.alvo.x, this.alvo.y);
+                    const forca = 150;
 
-        // Dano ao jogador
-        if (this.alvo?.levarDano) {
-          this.alvo.levarDano(20);
-        }
+                    // Dano ao jogador
+                    if (this.alvo?.levarDano) {
+                        this.alvo.levarDano(20);
+                    }
 
-        this.alvo.estado = 'empurrado';
-        this.alvo.body.velocity.x = Math.cos(angulo) * forca;
-        this.alvo.body.velocity.y = Math.sin(angulo) * forca;
+                    this.alvo.estado = 'empurrado';
+                    this.alvo.body.velocity.x = Math.cos(angulo) * forca;
+                    this.alvo.body.velocity.y = Math.sin(angulo) * forca;
 
-        this.scene.time.addEvent({
-          delay: 150,
-          callback: () => {
-            this.alvo.estado = 'normal';
-            this.alvo.body.setVelocity(0);
-          }
+                    this.scene.time.addEvent({
+                        delay: 150,
+                        callback: () => {
+                            this.alvo.estado = 'normal';
+                            this.alvo.body.setVelocity(0);
+                        }
+                    });
+                }
+            }
         });
-      }
+
+        this.once('animationcomplete', () => {
+            this.estado = 'idle';
+            this.off('animationupdate'); // remove o listener
+        });
     }
-  });
 
-  this.once('animationcomplete', () => {
-    this.estado = 'idle';
-    this.off('animationupdate'); // remove o listener
-  });
-}
-
-
+    // ===== Manter compatibilidade com código existente =====
+    atacar() {
+        // Encaminha para o ataque corpo-a-corpo atualizado
+        this.ataqueCorpo();
+    }
 
     levarDano(dano = 20) {
         if (this.estado === 'morto') return;
@@ -153,5 +191,37 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
         this.setVelocity(0);
         this.play('golem_die', true);
         this.body.enable = false; // desativa colisões
+    }
+
+    // ===== Disparo de projétil (pedra) =====
+    shootProjectile(alvo) {
+        if (this.estado === 'morto') return;
+
+        // Garante textura simples para pedra caso ainda não exista
+        if (!this.scene.textures.exists('rock_tex')) {
+            const gfx = this.scene.make.graphics({ x: 0, y: 0, add: false });
+            gfx.fillStyle(0x996633, 1);
+            gfx.fillCircle(8, 8, 8);
+            gfx.generateTexture('rock_tex', 16, 16);
+            gfx.destroy();
+        }
+
+        const rock = this.scene.physics.add.image(this.x, this.y, 'rock_tex');
+        rock.setDepth(5);
+        rock.setBounce(0);
+        rock.setCollideWorldBounds(false);
+        rock.body.setCircle(8);
+        rock.body.allowGravity = false;
+
+        // Calcula vetor velocidade em direção ao alvo
+        const angulo = Phaser.Math.Angle.Between(this.x, this.y, alvo.x, alvo.y);
+        const speed = this.enraged ? 230 : 180;
+        this.scene.physics.velocityFromRotation(angulo, speed, rock.body.velocity);
+
+        // Adiciona ao grupo
+        this.projectiles.add(rock);
+
+        // Destroi após 3s
+        this.scene.time.addEvent({ delay: 3000, callback: () => rock.destroy() });
     }
 } 

@@ -304,7 +304,7 @@ class GameScene extends Phaser.Scene {
     player.strokeCircle(width / 2, height / 2, playerSize);
     
     // Mensagem temporária
-    this.add.text(width / 2, height * 0.25, 'Fase de Dungeon', {
+    this.add.text(width / 2, height * 0.25, 'Perigo Iminente', {
       fontSize: Math.max(32, Math.floor(width / 20)) + 'px',
       fontFamily: 'Georgia, serif',
       color: '#ffffff',
@@ -336,7 +336,7 @@ class GameScene extends Phaser.Scene {
         this.scene.start('CenaJogo');
       });
 
-    this.add.text(width / 2, height * 0.6, 'Fase de Dungeon', {
+    this.add.text(width / 2, height * 0.6, '???', {
       fontSize: Math.max(20, Math.floor(width / 35)) + 'px',
       fontFamily: 'Georgia, serif',
       color: '#ffd700',
