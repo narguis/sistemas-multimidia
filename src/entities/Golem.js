@@ -101,9 +101,6 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
             this.ultimoAtaque = agora;
             this.setVelocity(0);
             this.ataqueCorpo();
-        } else if (distancia < 180 && podeProjetil) {
-            this.lastProjectileTime = agora;
-            this.shootProjectile(player);
         }
 
         // Movimento
@@ -253,6 +250,6 @@ export default class Golem extends Phaser.Physics.Arcade.Sprite {
         this.projectiles.add(rock);
 
         // Destroi após 3s
-        this.scene.time.addEvent({ delay: 3000, callback: () => rock.destroy() });
+        this.scene.time.addEvent({ delay: 15000, callback: () => rock.destroy() });
     }
 } 
